@@ -188,6 +188,8 @@ type CodeExtractor struct {
 	Code    []App
 	Gadgets []ExGadget
 	FieldID ecc.ID
+	Store map[any]any
+	Deferred [](func(frontend.API) error)
 }
 
 func (ce *CodeExtractor) AssertIsCrumb(i1 frontend.Variable) {
@@ -213,8 +215,7 @@ func (ce *CodeExtractor) NewHintForId(
 }
 
 func (ce *CodeExtractor) Defer(cb func(api frontend.API) error) {
-	// TODO implement me
-	panic("implement me")
+	ce.Deferred = append(ce.Deferred, cb)
 }
 
 func (ce *CodeExtractor) InternalVariable(wireID uint32) frontend.Variable {
@@ -230,6 +231,21 @@ func (ce *CodeExtractor) ToCanonicalVariable(variable frontend.Variable) fronten
 func (ce *CodeExtractor) SetGkrInfo(info constraint.GkrInfo) error {
 	// TODO implement me
 	panic("implement me")
+}
+
+
+func (ce *CodeExtractor) SetKeyValue(key, value any) {
+	if !reflect.TypeOf(key).Comparable() {
+		panic("key type not comparable")
+	}
+	ce.Store[key] = value
+}
+
+func (ce *CodeExtractor) GetKeyValue(key any) (value any) {
+	if !reflect.TypeOf(key).Comparable() {
+		panic("key type not comparable")
+	}
+	return ce.Store[key]
 }
 
 func sanitizeVars(args ...frontend.Variable) []Operand {
@@ -266,6 +282,10 @@ func sanitizeVars(args ...frontend.Variable) []Operand {
 		case []frontend.Variable:
 			opsArray := sanitizeVars(arg.([]frontend.Variable)...)
 			ops = append(ops, ProjArray{opsArray})
+		case []uint8:
+			for _, i := range arg.([]uint8) {
+				ops = append(ops, sanitizeVars(i)...)
+			}
 		case nil:
 			// This takes care of uninitialised fields that are
 			// passed to gadgets

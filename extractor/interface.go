@@ -29,11 +29,20 @@ func CircuitToLeanWithName(circuit frontend.Circuit, field ecc.ID, namespace str
 		Code:    []App{},
 		Gadgets: []ExGadget{},
 		FieldID: field,
+		Store: make(map[any]any),
+		Deferred: [](func(frontend.API) error){},
 	}
 
 	err = circuit.Define(&api)
 	if err != nil {
 		return "", err
+	}
+
+	for _, cb := range api.Deferred {
+		err = cb(&api)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	extractorCircuit := ExCircuit{
